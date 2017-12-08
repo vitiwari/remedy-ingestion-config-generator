@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.4/css/select2.min.css" rel="stylesheet" />
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css">
+    <!-- jQuery library -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <!-- Popper JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js"></script>
+    <!-- Latest compiled JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.4/js/select2.min.js"></script>
+    <script src="app/event.js"></script>
+    <script src="app/eventbus.js"></script>
+    <script>
+        function App() {
+            this.isIncident;
+            this.defaultTemplate = "";
+            this.generatedTemplate = "";
+            this.finalJsonTemplate = "";
+            this.finalPluginJsonTemplate = "";
+            this.finalScriptJsonTemplate = "";
+            this.isPluginProductSelected = true;
+            this.isAdvancedConfChecked = false;
+            this.EVENT = new Event();
+            this.eventBus = new EventBus();
+            this.filesLoaded = 0;
+        }
+        var app = new App();
+    </script>
+    <script src="app/validator.js"></script>
+    <script src="app/uigenerator.js"></script>
+    <script src="app/util.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0px;
+            padding: 0px;
+        }
+
+        .row {
+            padding-bottom: 5px;
+        }
+
+        .form-control-success {
+            border: 1px solid rgb(14, 124, 87);
+        }
+
+        .form-control-danger {
+            border: 0px solid rgb(255, 15, 15);
+            box-shadow: inset 0px 0px 6px 0px red;
+        }
+
+        .has-success .form-control-feedback {
+            color: rgb(5, 77, 26);
+        }
+
+        .has-danger .form-control-feedback {
+            color: red;
+        }
+
+        .select2-container .select2-selection--single {
+            height: 38px;
+            width: 100%;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            height: 34px;
+            position: absolute;
+            top: 1px;
+            right: 1px;
+            width: 34px;
+        }
+
+        #final-template {
+            width: 100%;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="jumbotron-fluid">
+            <h3 class="display-5">Remedy Plugin/Bulkingestion Configuration Generator</h3>
+            <p class="lead"></p>
+            <hr class="my-8">
+        </div>
+    </div>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col" id="incident-change-select">
+                <div class="form-check form-check-inline">
+                    <label class="form-check-label">
+                        <input type="radio" class="form-check-input incidentradio" value=true name="isincident"> Incident Management
+                    </label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <label class="form-check-label">
+                        <input type="radio" class="form-check-input incidentradio" value=false name="isincident"> Change Management
+                    </label>
+                </div>
+            </div>
+            <div class="col">
+                <div class="form-group">
+                    <label for="generatedtemplatefile">Load Generated Template
+                        <a tabindex="0" class="badge badge-secondary" role="button" data-toggle="popover" data-trigger="focus" title="" data-content="Use the generator script to generate a configuration file.
+                             See : https://github.com/vitiwari/remedy-ingestion-config-generator
+                             You can skip this and directly click the load configuration button.
+                              ">?</a>
+                    </label>
+                    <input type="file" disabled class="form-control" id="generatedtemplatefile" />
+                </div>
+            </div>
+            <div class="col" id="product-select">
+                <div class="form-check form-check-inline">
+                    <label class="form-check-label">
+                        <input type="radio" class="form-check-input productradio" disabled checked value=true name="product"> Plugin
+                    </label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <label class="form-check-label">
+                        <input type="radio" class="form-check-input productradio" disabled value=false name="product"> Script
+                    </label>
+                </div>
+            </div>
+            <div class="col">
+                <input type="button" disabled id="loadBtn" value="Load Configuration" class="btn btn-primary" />
+                <a tabindex="1" class="badge badge-secondary" role="button" data-toggle="popover" data-trigger="focus" title="" data-content="This loads a default(OOTB) template, and generates a UI for interactive input & template updation.
+                If you generate(https://github.com/vitiwari/remedy-ingestion-config-generator) and load a json file before clicking this button,
+                then it presents you with all the field definition possible. However even if you skip previous process 
+                It loads the default mappings available to get you started.
+                 ">?</a>
+            </div>
+            <div class="col">
+                <input type="button" id="resetBtn" value="Reset" class="btn btn-secondary" />
+            </div>
+        </div>
+    </div>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-8 marginpadding0">
+                <div class="card">
+                    <div class="card-header">Configuration</div>
+                    <div class="card-body" id="configuration-container">
+                        <div class="row">
+
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="input-group">
+                            <span class="input-group-addon" id="adv">
+                                <input type="checkbox" aria-label="Checkbox for following input" id="isAdvancedConf">
+                            </span>
+                            <input type="button" class="form-control btn btn-outline-secondary" data-toggle="collapse" href="#collapseAdv" aria-expanded="false"
+                                aria-controls="collapseAdv" value="Advanced Configuration" />
+                        </div>
+
+                    </div>
+                    <div class="card-body">
+                        <div class="collapse" id="collapseAdv">
+                            <div class="card card-body" id="adv-configuration-container">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="row">
+                            <div class="col">Properties</div>
+                            <div class="col">
+                                <input type="button" id="addPropBtn" value="Add New Property" class="btn btn-primary" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body" id="property-container">
+                        <div class="row">
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 marginpadding0">
+                <div class="card">
+                    <div class="card-header">JSON Configuraton</div>
+                    <div class="card-body pre-scrollable" id="final-template">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="updateModel">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Property</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+
+
+                <!-- Modal body -->
+                <div class="modal-body">
+                    <!-- Modal Header -->
+                    <div class="container-fluid border">
+                        <form>
+                            <div class="form-group row border">
+                                <label class="col-sm-12 col-form-label">Property Details</label>
+                            </div>
+
+                            <div class="form-group row">
+                                <label for="model_propertyname" class="col-sm-4 col-form-label">Property Name</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control modelPropertyName" id="model_propertyname">
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="myTab" class="col-sm-4 col-form-label">Value Mapping</label>
+                                <div class="col-sm-8">
+                                    <ul class="nav nav-tabs" id="myTab" role="tablist">
+                                        <li class="nav-item">
+                                            <a class="nav-link active" id="value-tab" data-toggle="tab" href="#valuetab" role="tab" aria-controls="valuetab" aria-selected="true">Fixed Value</a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link" id="definition-tab" data-toggle="tab" href="#definitiontab" role="tab" aria-controls="definitiontab"
+                                                aria-selected="false">Remedy Field Mapping</a>
+                                        </li>
+                                    </ul>
+                                    <div class="tab-content" id="myTabContent">
+                                        <div class="tab-pane fade show active" id="valuetab" role="tabpanel" aria-labelledby="value-tab">
+                                            <input type="text" class="form-control modelValue" id="model_value">
+                                        </div>
+                                        <div class="tab-pane fade" id="definitiontab" role="tabpanel" aria-labelledby="definition-tab">
+                                            <select class="form-control modeldefinitionMapping" id="model_definitionname">
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="model_fieldid" class="col-sm-4 col-form-label">Field Id</label>
+                                <div class="col-sm-8">
+                                    <input type="text" readonly class="form-control-plaintext" id="model_fieldid">
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="model_fieldtype" class="col-sm-4 col-form-label">Field Type</label>
+                                <div class="col-sm-8">
+                                    <input type="text" readonly class="form-control-plaintext" id="model_fieldtype">
+                                </div>
+                            </div>
+                            <div class="form-group row">
+                                <label for="model_fielddatatype" class="col-sm-4 col-form-label">Field Data Type</label>
+                                <div class="col-sm-8">
+                                    <input type="text" readonly class="form-control-plaintext" id="model_fielddatatype">
+                                </div>
+                            </div>
+
+                        </form>
+                    </div>
+                    <div class="container-fluid border">
+                        <div class="form-group row border">
+                            <a class="col-sm-8 col-form-label" data-toggle="collapse" href="#collapselist" aria-expanded="false" aria-controls="collapselist">
+                                Value Mapping
+                            </a>
+                        </div>
+                        <div class="collapse" id="collapselist">
+                            <div class="card card-body">
+                                <ul class="list-group" id="value-map">
+
+                                </ul>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- Modal footer -->
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" id="delete-btn">Delete</button>
+                        <button type="button" class="btn btn-outline-success" id="save-btn">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <script src="app/app.js"></script>
+</body>
+
+
+</html>
